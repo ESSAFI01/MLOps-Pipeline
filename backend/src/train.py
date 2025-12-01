@@ -9,8 +9,8 @@ warnings.filterwarnings('ignore')
 
 from data_utils import prepare_features_for_training, scale_features
 
-def train_model(cleaned_csv_path='../dataSet/cleaned_cardata2.csv', 
-                model_output_path='../models/regressor_final.pkl'):
+def train_model(cleaned_csv_path=r'Mlpro\dataSet\cleaned_cardata3.csv', 
+                model_output_path=r'Mlpro\models\regressorfinal.pkl'):
     """
     Entraîne le modèle XGBoost et sauvegarde le pipeline complet
     """
