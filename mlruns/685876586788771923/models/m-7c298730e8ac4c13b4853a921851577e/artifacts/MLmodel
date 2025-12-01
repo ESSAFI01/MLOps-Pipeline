@@ -1,0 +1,22 @@
+artifact_path: file:///C:/Users/essaf/Desktop/MLopsTP/mlruns/685876586788771923/models/m-7c298730e8ac4c13b4853a921851577e/artifacts
+flavors:
+  python_function:
+    data: model.ubj
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.xgboost
+    python_version: 3.13.2
+  xgboost:
+    code: null
+    data: model.ubj
+    model_class: xgboost.sklearn.XGBRegressor
+    model_format: ubj
+    xgb_version: 1.7.6
+mlflow_version: 3.6.0
+model_id: m-7c298730e8ac4c13b4853a921851577e
+model_size_bytes: 6512711
+model_uuid: m-7c298730e8ac4c13b4853a921851577e
+prompts: null
+run_id: 3f7f70b0b4ec4d25b2f297854c62a88f
+utc_time_created: '2025-12-01 20:45:22.857097'
