@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import pickle
+from datetime import datetime
 from sklearn.model_selection import train_test_split, GridSearchCV
 from xgboost import XGBRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
@@ -13,24 +14,111 @@ warnings.filterwarnings('ignore')
 
 from data_utils import prepare_features_for_training, scale_features
 
+
+def get_model_configs():
+    """Différentes configurations de modèles à tester"""
+    configs = {
+        'baseline': {
+            'colsample_bytree': [0.7],
+            'learning_rate': [0.1],
+            'max_depth': [9],
+            'min_child_weight': [1],
+            'n_estimators': [350],
+            'subsample': [0.8],
+            'gamma': [0],
+            'reg_alpha': [0.1],
+            'reg_lambda': [1.5]
+        },
+        'fast_model': {
+            'colsample_bytree': [0.8],
+            'learning_rate': [0.15],
+            'max_depth': [6],
+            'min_child_weight': [1],
+            'n_estimators': [150],
+            'subsample': [0.8],
+            'gamma': [0],
+            'reg_alpha': [0.05],
+            'reg_lambda': [1.0]
+        },
+        'accurate_model': {
+            'colsample_bytree': [0.6],
+            'learning_rate': [0.05],
+            'max_depth': [12],
+            'min_child_weight': [1],
+            'n_estimators': [500],
+            'subsample': [0.9],
+            'gamma': [0.1],
+            'reg_alpha': [0.2],
+            'reg_lambda': [2.0]
+        },
+        'lightweight_model': {
+            'colsample_bytree': [0.9],
+            'learning_rate': [0.2],
+            'max_depth': [4],
+            'min_child_weight': [5],
+            'n_estimators': [100],
+            'subsample': [0.7],
+            'gamma': [0],
+            'reg_alpha': [0],
+            'reg_lambda': [1.0]
+        }
+    }
+    return configs
+
+
 # Configuration MLflow
 mlflow.set_experiment("car_price_prediction")
-mlflow.set_tracking_uri("file:./mlruns")  # Sauvegarde locale
+mlflow.set_tracking_uri("file:./mlruns")
 
-def train_model(cleaned_csv_path=r'Mlpro\dataSet\cleaned_cardata3.csv', 
-                model_output_path=r'Mlpro\models\regressorfinal.pkl'):
+
+def train_model(
+    model_version='baseline',
+    cleaned_csv_path=r'Mlpro\dataSet\cleaned_cardata3.csv', 
+    model_output_path=None  # Sera généré automatiquement si None
+):
     """
     Entraîne le modèle XGBoost et sauvegarde le pipeline complet
+    
+    Args:
+        model_version (str): Version du modèle ('baseline', 'fast_model', 'accurate_model', 'lightweight_model')
+        cleaned_csv_path (str): Chemin vers les données nettoyées
+        model_output_path (str): Chemin de sortie (auto si None)
     """
     
-    # Démarrer un run MLflow
-    with mlflow.start_run():
+    # Générer le chemin de sortie automatiquement si non fourni
+    if model_output_path is None:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        model_output_path = rf'Mlpro\models\regressor_{model_version}_{timestamp}.pkl'
+    
+    # Récupérer la configuration pour cette version
+    configs = get_model_configs()
+    if model_version not in configs:
+        available = ', '.join(configs.keys())
+        raise ValueError(f"Version '{model_version}' inconnue. Disponibles: {available}")
+    
+    grid = configs[model_version]
+    
+    # Démarrer un run MLflow avec nom personnalisé
+    with mlflow.start_run(run_name=f"{model_version}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"):
+        
+        print(f"\n{'='*70}")
+        print(f"🎯 Entraînement de la version: {model_version.upper()}")
+        print(f"{'='*70}\n")
+        
+        # Logger la version du modèle
+        mlflow.log_param("model_version", model_version)
+        mlflow.set_tag("model_version", model_version)
+        mlflow.set_tag("model_type", "XGBoost")
+        mlflow.set_tag("framework", "scikit-learn")
+        mlflow.set_tag("task", "regression")
+        mlflow.set_tag("dataset", "car_prices")
         
         # 1. Charger et préparer données
         print("📂 Chargement des données...")
         data = pd.read_csv(cleaned_csv_path)
         mlflow.log_param("dataset_size", len(data))
         mlflow.log_param("dataset_path", cleaned_csv_path)
+        print(f"   ✓ {len(data)} lignes chargées")
         
         X, y, encoders = prepare_features_for_training(data.copy())
         
@@ -47,37 +135,30 @@ def train_model(cleaned_csv_path=r'Mlpro\dataSet\cleaned_cardata3.csv',
         mlflow.log_param("train_samples", len(X_train))
         mlflow.log_param("test_samples", len(X_test))
         
+        print(f"\n✂️ Split effectué:")
+        print(f"   Train: {len(X_train)} lignes")
+        print(f"   Test: {len(X_test)} lignes")
+        
         # 3. Normalisation
         X_train_scaled, X_test_scaled, scaler = scale_features(X_train, X_test)
         
-        # 4. GridSearch XGBoost (hyperparamètres optimisés)
-        grid = {
-            'colsample_bytree': [0.7],
-            'learning_rate': [0.1],
-            'max_depth': [9],
-            'min_child_weight': [1],
-            'n_estimators': [350],
-            'subsample': [0.8],
-            'gamma': [0],
-            'reg_alpha': [0.1],
-            'reg_lambda': [1.5]
-        }
-        
-        # Logger les hyperparamètres
+        # Logger les hyperparamètres de cette version
+        print(f"\n⚙️ Hyperparamètres ({model_version}):")
         for param_name, param_value in grid.items():
             mlflow.log_param(f"grid_{param_name}", param_value[0])
+            print(f"   {param_name}: {param_value[0]}")
         
         model = GridSearchCV(
             estimator=XGBRegressor(random_state=123, tree_method='hist'),
             param_grid=grid,
             scoring='neg_root_mean_squared_error',
             cv=5,
-            verbose=1,
+            verbose=0,  # Réduit la verbosité pour un affichage plus propre
             n_jobs=-1
         )
         
         # 5. Fit sur données train
-        print("🔄 Entraînement du modèle...")
+        print(f"\n🔄 Entraînement du modèle {model_version}...")
         model.fit(X_train_scaled, y_train)
         
         # Logger les meilleurs paramètres trouvés
@@ -90,9 +171,9 @@ def train_model(cleaned_csv_path=r'Mlpro\dataSet\cleaned_cardata3.csv',
         rmse = np.sqrt(mean_squared_error(y_test, y_pred))
         
         print("\n📊 Métriques du modèle (test set):")
-        print(f"  R² Score: {r2:.6f}")
-        print(f"  MAE: {mae:.2f}")
-        print(f"  RMSE: {rmse:.2f}")
+        print(f"   R² Score: {r2:.6f}")
+        print(f"   MAE: {mae:.2f}")
+        print(f"   RMSE: {rmse:.2f}")
         
         # Logger les métriques de test
         mlflow.log_metrics({
@@ -113,9 +194,9 @@ def train_model(cleaned_csv_path=r'Mlpro\dataSet\cleaned_cardata3.csv',
         rmse_combined = np.sqrt(mean_squared_error(y_combined, y_pred_combined))
         
         print("\n📊 Métriques finales (full dataset):")
-        print(f"  R² Score: {r2_combined:.6f}")
-        print(f"  MAE: {mae_combined:.2f}")
-        print(f"  RMSE: {rmse_combined:.2f}")
+        print(f"   R² Score: {r2_combined:.6f}")
+        print(f"   MAE: {mae_combined:.2f}")
+        print(f"   RMSE: {rmse_combined:.2f}")
         
         # Logger les métriques finales
         mlflow.log_metrics({
@@ -128,7 +209,9 @@ def train_model(cleaned_csv_path=r'Mlpro\dataSet\cleaned_cardata3.csv',
         model_data = {
             'model': model,
             'scaler': scaler,
-            'encoders': encoders
+            'encoders': encoders,
+            'version': model_version,
+            'timestamp': datetime.now().isoformat()
         }
         
         with open(model_output_path, 'wb') as file:
@@ -138,20 +221,41 @@ def train_model(cleaned_csv_path=r'Mlpro\dataSet\cleaned_cardata3.csv',
         mlflow.xgboost.log_model(model.best_estimator_, "xgboost_model")
         mlflow.log_artifact(model_output_path, "model_pickle")
         
-        # Logger des tags pour faciliter la recherche
-        mlflow.set_tags({
-            "model_type": "XGBoost",
-            "framework": "scikit-learn",
-            "task": "regression",
-            "dataset": "car_prices"
-        })
-        
-        print(f"\n✅ Modèle sauvegardé : {model_output_path}")
+        print(f"\n✅ Modèle sauvegardé: {model_output_path}")
         print(f"📊 MLflow Run ID: {mlflow.active_run().info.run_id}")
         print(f"🔗 Voir les résultats: mlflow ui")
+        print(f"\n{'='*70}\n")
         
-        return model_data
+        return model_data, model_output_path
 
 
 if __name__ == "__main__":
-    train_model()
+    import sys
+    
+    # Récupérer la version depuis la ligne de commande
+    if len(sys.argv) > 1:
+        version = sys.argv[1]
+    else:
+        version = 'baseline'
+    
+    print(f"\n{'='*70}")
+    print(f"🚀 MLOPS PIPELINE - ENTRAÎNEMENT DE MODÈLE")
+    print(f"{'='*70}")
+    print(f"Version demandée: {version}")
+    print(f"Versions disponibles: {', '.join(get_model_configs().keys())}")
+    print(f"{'='*70}\n")
+    
+    try:
+        model_data, model_path = train_model(model_version=version)
+        
+        print(f"\n{'='*70}")
+        print(f"✅ SUCCÈS - Modèle {version} entraîné!")
+        print(f"{'='*70}")
+        print(f"📦 Fichier: {model_path}")
+        print(f"💡 Pour tester: python predict.py")
+        print(f"📊 Pour voir MLflow: mlflow ui")
+        print(f"{'='*70}\n")
+        
+    except Exception as e:
+        print(f"\n❌ ERREUR: {e}\n")
+        raise

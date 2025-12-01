@@ -1,0 +1,14 @@
+artifact_uri: file:///C:/Users/essaf/Desktop/MLopsTP/mlruns/685876586788771923/15338c12c0694b268390c4b31d4cde00/artifacts
+end_time: 1764630039054
+entry_point_name: ''
+experiment_id: '685876586788771923'
+lifecycle_stage: active
+run_id: 15338c12c0694b268390c4b31d4cde00
+run_name: baseline_20251201_235956
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1764629997813
+status: 3
+tags: []
+user_id: essaf

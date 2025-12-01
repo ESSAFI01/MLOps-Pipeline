@@ -1,0 +1,10 @@
+artifact_location: file:///C:/Users/essaf/Desktop/MLopsTP/mlruns/685876586788771923/models/m-eecbc40b2fc841be841d363ea9e972ae/artifacts
+creation_timestamp: 1764630024121
+experiment_id: '685876586788771923'
+last_updated_timestamp: 1764630038925
+model_id: m-eecbc40b2fc841be841d363ea9e972ae
+model_type: null
+name: xgboost_model
+source_run_id: 15338c12c0694b268390c4b31d4cde00
+status: 2
+status_message: null
