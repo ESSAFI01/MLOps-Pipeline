@@ -128,7 +128,7 @@ def train_model(
     # Générer le chemin de sortie automatiquement
     if model_output_path is None:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        model_output_path = MODELS_DIR / f"regressor_{model_version}_{timestamp}.pkl"  # ← Utilise MODELS_DIR
+        model_output_path = MODELS_DIR / f"regressor_{model_version}_{timestamp}.pkl"  
     else:
         model_output_path = Path(model_output_path)
     
@@ -261,7 +261,12 @@ def train_model(
         with open(model_output_path, 'wb') as file:
             pickle.dump(model_data, file)
         
-        mlflow.xgboost.log_model(model.best_estimator_, "xgboost_model")
+        mlflow.xgboost.log_model(
+            model.best_estimator_,
+            artifact_path="xgboost_model",
+            registered_model_name="car_price_model"
+        )
+
         mlflow.log_artifact(str(model_output_path), "model_pickle")
         
         print(f"\n✅ Modèle sauvegardé: {model_output_path}")
