@@ -9,10 +9,27 @@ import warnings
 import mlflow
 import mlflow.sklearn
 import mlflow.xgboost
+import os
+from pathlib import Path
 
 warnings.filterwarnings('ignore')
 
 from data_utils import prepare_features_for_training, scale_features
+
+# Détection automatique de l'environnement
+if os.path.exists('/app'):  # Dans Docker
+    PROJECT_ROOT = Path('/app')
+else:  # En local
+    PROJECT_ROOT = Path(__file__).parent.parent
+
+DATA_DIR = PROJECT_ROOT / "Mlpro" / "dataSet"
+MODELS_DIR = PROJECT_ROOT / "Mlpro" / "models"
+MLRUNS_DIR = PROJECT_ROOT / "mlruns"
+
+# Créer les dossiers s'ils n'existent pas
+MODELS_DIR.mkdir(parents=True, exist_ok=True)
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+MLRUNS_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def get_model_configs():
@@ -68,29 +85,52 @@ def get_model_configs():
 
 # Configuration MLflow
 mlflow.set_experiment("car_price_prediction")
-mlflow.set_tracking_uri("file:./mlruns")
+mlflow.set_tracking_uri(f"file:{MLRUNS_DIR.as_posix()}")  # Utilise MLRUNS_DIR
 
 
 def train_model(
     model_version='baseline',
-    cleaned_csv_path=r'C:\Users\Ayoub Gorry\Desktop\mlops\MLOps-Pipeline\Mlpro\dataSet\cleaned_cardata3.csv', 
-    model_output_path=None  # Sera généré automatiquement si None
+    cleaned_csv_path='backend\dataSet\cleaned_cardata3.csv',  #
+    model_output_path='backend\models'
 ):
     """
     Entraîne le modèle XGBoost et sauvegarde le pipeline complet
     
     Args:
-        model_version (str): Version du modèle ('baseline', 'fast_model', 'accurate_model', 'lightweight_model')
-        cleaned_csv_path (str): Chemin vers les données nettoyées
-        model_output_path (str): Chemin de sortie (auto si None)
+        model_version (str): Version du modèle
+        cleaned_csv_path (str|Path): Chemin vers les données (auto si None)
+        model_output_path (str|Path): Chemin de sortie (auto si None)
     """
     
-    # Générer le chemin de sortie automatiquement si non fourni
+    # Utiliser les chemins dynamiques
+    if cleaned_csv_path is None:
+        cleaned_csv_path = DATA_DIR / "cleaned_cardata3.csv"  # ← Utilise DATA_DIR
+    else:
+        cleaned_csv_path = Path(cleaned_csv_path)
+    
+    # Vérifier que le fichier existe
+    if not cleaned_csv_path.exists():
+        # Essayer un nom alternatif
+        alt_path = DATA_DIR / "cleaned_cardata2.csv"
+        if alt_path.exists():
+            cleaned_csv_path = alt_path
+            print(f"⚠️  Utilisation de {alt_path.name} à la place")
+        else:
+            raise FileNotFoundError(
+                f"Fichier de données introuvable:\n"
+                f"  Cherché: {cleaned_csv_path}\n"
+                f"  Alternative: {alt_path}\n"
+                f"  Contenu du dossier: {list(DATA_DIR.glob('*.csv'))}"
+            )
+    
+    # Générer le chemin de sortie automatiquement
     if model_output_path is None:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        model_output_path = rf'Mlpro\models\regressor_{model_version}_{timestamp}.pkl'
+        model_output_path = MODELS_DIR / f"regressor_{model_version}_{timestamp}.pkl"  # ← Utilise MODELS_DIR
+    else:
+        model_output_path = Path(model_output_path)
     
-    # Récupérer la configuration pour cette version
+    # Récupérer la configuration
     configs = get_model_configs()
     if model_version not in configs:
         available = ', '.join(configs.keys())
@@ -98,11 +138,16 @@ def train_model(
     
     grid = configs[model_version]
     
-    # Démarrer un run MLflow avec nom personnalisé
+    # Démarrer un run MLflow
     with mlflow.start_run(run_name=f"{model_version}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"):
         
         print(f"\n{'='*70}")
         print(f"🎯 Entraînement de la version: {model_version.upper()}")
+        print(f"{'='*70}")
+        print(f"📁 Dossier projet: {PROJECT_ROOT}")
+        print(f"📂 Données: {DATA_DIR}")
+        print(f"💾 Modèles: {MODELS_DIR}")
+        print(f"📊 MLflow: {MLRUNS_DIR}")
         print(f"{'='*70}\n")
         
         # Logger la version du modèle
@@ -114,10 +159,10 @@ def train_model(
         mlflow.set_tag("dataset", "car_prices")
         
         # 1. Charger et préparer données
-        print("📂 Chargement des données...")
+        print(f"📂 Chargement des données: {cleaned_csv_path.name}")
         data = pd.read_csv(cleaned_csv_path)
         mlflow.log_param("dataset_size", len(data))
-        mlflow.log_param("dataset_path", cleaned_csv_path)
+        mlflow.log_param("dataset_path", str(cleaned_csv_path))
         print(f"   ✓ {len(data)} lignes chargées")
         
         X, y, encoders = prepare_features_for_training(data.copy())
@@ -129,7 +174,6 @@ def train_model(
             X, y, test_size=test_size, random_state=random_state
         )
         
-        # Logger les paramètres de split
         mlflow.log_param("test_size", test_size)
         mlflow.log_param("random_state", random_state)
         mlflow.log_param("train_samples", len(X_train))
@@ -142,7 +186,7 @@ def train_model(
         # 3. Normalisation
         X_train_scaled, X_test_scaled, scaler = scale_features(X_train, X_test)
         
-        # Logger les hyperparamètres de cette version
+        # Logger les hyperparamètres
         print(f"\n⚙️ Hyperparamètres ({model_version}):")
         for param_name, param_value in grid.items():
             mlflow.log_param(f"grid_{param_name}", param_value[0])
@@ -153,18 +197,17 @@ def train_model(
             param_grid=grid,
             scoring='neg_root_mean_squared_error',
             cv=5,
-            verbose=0,  # Réduit la verbosité pour un affichage plus propre
+            verbose=0,
             n_jobs=-1
         )
         
-        # 5. Fit sur données train
+        # 5. Fit
         print(f"\n🔄 Entraînement du modèle {model_version}...")
         model.fit(X_train_scaled, y_train)
         
-        # Logger les meilleurs paramètres trouvés
         mlflow.log_params({f"best_{k}": v for k, v in model.best_params_.items()})
         
-        # 6. Évaluation sur test set
+        # 6. Évaluation test
         y_pred = model.predict(X_test_scaled)
         r2 = r2_score(y_test, y_pred)
         mae = mean_absolute_error(y_test, y_pred)
@@ -175,14 +218,13 @@ def train_model(
         print(f"   MAE: {mae:.2f}")
         print(f"   RMSE: {rmse:.2f}")
         
-        # Logger les métriques de test
         mlflow.log_metrics({
             "test_r2_score": r2,
             "test_mae": mae,
             "test_rmse": rmse
         })
         
-        # 7. Réentraînement sur tout le dataset
+        # 7. Réentraînement complet
         print("\n🔄 Réentraînement sur le dataset complet...")
         X_combined = np.vstack([X_train_scaled, X_test_scaled])
         y_combined = np.concatenate([y_train, y_test])
@@ -198,28 +240,27 @@ def train_model(
         print(f"   MAE: {mae_combined:.2f}")
         print(f"   RMSE: {rmse_combined:.2f}")
         
-        # Logger les métriques finales
         mlflow.log_metrics({
             "final_r2_score": r2_combined,
             "final_mae": mae_combined,
             "final_rmse": rmse_combined
         })
         
-        # 8. Sauvegarde du pipeline complet
+        # 8. Sauvegarde
         model_data = {
             'model': model,
             'scaler': scaler,
             'encoders': encoders,
             'version': model_version,
-            'timestamp': datetime.now().isoformat()
+            'timestamp': datetime.now().isoformat(),
+            'training_data_path': str(cleaned_csv_path)
         }
         
         with open(model_output_path, 'wb') as file:
             pickle.dump(model_data, file)
         
-        # Logger le modèle et les artifacts avec MLflow
         mlflow.xgboost.log_model(model.best_estimator_, "xgboost_model")
-        mlflow.log_artifact(model_output_path, "model_pickle")
+        mlflow.log_artifact(str(model_output_path), "model_pickle")
         
         print(f"\n✅ Modèle sauvegardé: {model_output_path}")
         print(f"📊 MLflow Run ID: {mlflow.active_run().info.run_id}")
@@ -232,7 +273,6 @@ def train_model(
 if __name__ == "__main__":
     import sys
     
-    # Récupérer la version depuis la ligne de commande
     if len(sys.argv) > 1:
         version = sys.argv[1]
     else:
@@ -241,8 +281,16 @@ if __name__ == "__main__":
     print(f"\n{'='*70}")
     print(f"🚀 MLOPS PIPELINE - ENTRAÎNEMENT DE MODÈLE")
     print(f"{'='*70}")
-    print(f"Version demandée: {version}")
+    print(f"📁 Environment: {'Docker' if os.path.exists('/app') else 'Local'}")
+    print(f"📁 Dossier projet: {PROJECT_ROOT}")
+    print(f"📂 Données: {DATA_DIR}")
+    print(f"💾 Modèles: {MODELS_DIR}")
+    print(f"\nVersion demandée: {version}")
     print(f"Versions disponibles: {', '.join(get_model_configs().keys())}")
+    
+    # Debug: afficher les fichiers disponibles
+    csv_files = list(DATA_DIR.glob('*.csv'))
+    print(f"\nFichiers CSV trouvés: {[f.name for f in csv_files]}")
     print(f"{'='*70}\n")
     
     try:
@@ -258,4 +306,6 @@ if __name__ == "__main__":
         
     except Exception as e:
         print(f"\n❌ ERREUR: {e}\n")
+        import traceback
+        traceback.print_exc()
         raise

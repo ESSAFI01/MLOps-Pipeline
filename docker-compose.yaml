@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  # Service pour entraîner un modèle
+  train:
+    build: .
+    container_name: mlops-train
+    volumes:
+      - ./Mlpro/models:/app/Mlpro/models
+      - ./Mlpro/dataSet:/app/Mlpro/dataSet
+      - ./mlruns:/app/mlruns
+    command: python src/train.py baseline
+    environment:
+      - PYTHONUNBUFFERED=1
+
+  # Service pour tester les prédictions
+  predict:
+    build: .
+    container_name: mlops-predict
+    volumes:
+      - ./Mlpro/models:/app/Mlpro/models
+      - ./Mlpro/dataSet:/app/Mlpro/dataSet
+    command: python src/predict.py
+    depends_on:
+      - train
+
+  # Service MLflow UI
+  mlflow:
+    build: .
+    container_name: mlops-mlflow
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./mlruns:/app/mlruns
+    command: mlflow ui --host 0.0.0.0 --port 5000
+    environment:
+      - MLFLOW_TRACKING_URI=file:./mlruns
+
+  # Service API (optionnel)
+  api:
+    build: .
+    container_name: mlops-api
+    ports:
+      - "8000:5000"
+    volumes:
+      - ./Mlpro/models:/app/Mlpro/models
+    command: python src/app.py
+    depends_on:
+      - train
