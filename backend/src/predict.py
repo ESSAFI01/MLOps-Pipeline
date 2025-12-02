@@ -6,6 +6,8 @@ from pathlib import Path
 import logging
 from datetime import datetime
 import json
+import mlflow
+import mlflow.sklearn
 
 # Détection automatique de l'environnement (comme train.py)
 if os.path.exists('/app'):  # Dans Docker
@@ -14,6 +16,7 @@ else:  # En local
     PROJECT_ROOT = Path(__file__).parent.parent
 
 MODELS_DIR = PROJECT_ROOT / "models"
+MLFLOW_TRACKING_URI = "http://127.0.0.1:5000"  # URI de votre serveur MLflow
 
 # Configuration du logging avec encodage UTF-8
 logging.basicConfig(
@@ -115,13 +118,13 @@ def predict_price(car_config, model_data, log_prediction=True):
                 'status': 'error',
                 'error': error_msg
             }
-            logger.warning(json.dumps(log_data, cls=CustomJSONEncoder))  # Utiliser l'encodeur personnalisé
+            logger.warning(json.dumps(log_data, cls=CustomJSONEncoder))
         
         return None, error_msg
     
     # Normaliser et prédire
     normalized_data = scaler.transform(new_data)
-    price = float(model.predict(normalized_data)[0])  # Convertir en float Python
+    price = float(model.predict(normalized_data)[0])
     
     # Calculer le temps de prédiction
     prediction_time = (datetime.now() - start_time).total_seconds()
@@ -136,53 +139,125 @@ def predict_price(car_config, model_data, log_prediction=True):
             'prediction_time_ms': round(prediction_time * 1000, 2),
             'status': 'success'
         }
-        logger.info(json.dumps(log_data, cls=CustomJSONEncoder))  # Utiliser l'encodeur personnalisé
+        logger.info(json.dumps(log_data, cls=CustomJSONEncoder))
     
     return price, None
 
 
-def predict_multiple(test_configs, model_data):
-    """Prédictions multiples avec statistiques"""
-    # Remplacer l'emoji par du texte simple pour Windows
+def predict_multiple(test_configs, model_data, mlflow_experiment_name="predictions"):
+    """Prédictions multiples avec tracking MLflow"""
     logger.info(f"Debut predictions batch: {len(test_configs)} voitures")
+    
+    # Configuration MLflow
+    mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
+    mlflow.set_experiment(mlflow_experiment_name)
     
     results = []
     success_count = 0
     error_count = 0
+    all_predictions = []
     
-    for config in test_configs:
-        price, error = predict_price(config, model_data, log_prediction=True)
+    # Démarrer une run MLflow
+    with mlflow.start_run(run_name=f"batch_predict_{datetime.now().strftime('%Y%m%d_%H%M%S')}") as run:
+        logger.info(f"MLflow Run ID: {run.info.run_id}")
         
-        if error:
-            error_count += 1
-            results.append({
-                'Car': config['name'],
-                'Status': 'Error',
-                'Message': error
+        # Loguer les métadonnées du modèle
+        if 'version' in model_data:
+            mlflow.log_param("model_version", model_data['version'])
+        if 'timestamp' in model_data:
+            mlflow.log_param("model_timestamp", model_data['timestamp'])
+        
+        mlflow.log_param("batch_size", len(test_configs))
+        mlflow.log_param("run_id", run.info.run_id)
+        
+        for i, config in enumerate(test_configs):
+            price, error = predict_price(config, model_data, log_prediction=True)
+            
+            if error:
+                error_count += 1
+                results.append({
+                    'Car': config['name'],
+                    'Status': 'Error',
+                    'Message': error
+                })
+            else:
+                success_count += 1
+                results.append({
+                    'Car': config['name'],
+                    'Manufacturer': config['manufacturer'],
+                    'Age': config['age'],
+                    'Mileage': f"{config['kilometerage']:.0f}",
+                    'Engine': config['engine'],
+                    'Transmission': config['transmission'],
+                    'Estimated Price (EUR)': f"{price:.0f}",
+                    'Estimated Price (MAD)': f"{price * 10:.0f}"
+                })
+                
+                # Stocker pour les métriques
+                all_predictions.append({
+                    'config': config,
+                    'predicted_price': price
+                })
+        
+        # Loguer les métriques globales
+        mlflow.log_metric("success_count", success_count)
+        mlflow.log_metric("error_count", error_count)
+        mlflow.log_metric("success_rate", success_count / len(test_configs))
+        
+        if success_count > 0:
+            prices = [p['predicted_price'] for p in all_predictions]
+            mlflow.log_metric("avg_predicted_price", np.mean(prices))
+            mlflow.log_metric("min_predicted_price", np.min(prices))
+            mlflow.log_metric("max_predicted_price", np.max(prices))
+            mlflow.log_metric("std_predicted_price", np.std(prices))
+        
+        # Sauvegarder les résultats dans un fichier et le loguer dans MLflow
+        results_df = pd.DataFrame(results)
+        results_file = PROJECT_ROOT / f"predictions_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+        results_df.to_csv(results_file, index=False)
+        
+        # Loguer le fichier de résultats
+        mlflow.log_artifact(str(results_file), "predictions")
+        
+        # Loguer un échantillon des prédictions comme table
+        sample_predictions = []
+        for pred in all_predictions[:5]:  # Les 5 premières prédictions
+            sample_predictions.append({
+                "name": pred['config']['name'],
+                "manufacturer": pred['config']['manufacturer'],
+                "age": pred['config']['age'],
+                "kilometerage": pred['config']['kilometerage'],
+                "engine": pred['config']['engine'],
+                "transmission": pred['config']['transmission'],
+                "predicted_price_eur": round(pred['predicted_price'], 2),
+                "predicted_price_mad": round(pred['predicted_price'] * 10, 2)
             })
-        else:
-            success_count += 1
-            results.append({
-                'Car': config['name'],
-                'Manufacturer': config['manufacturer'],
-                'Age': config['age'],
-                'Mileage': f"{config['kilometerage']:.0f}",
-                'Engine': config['engine'],
-                'Transmission': config['transmission'],
-                'Estimated Price (EUR)': f"{price:.0f}",
-                'Estimated Price (MAD)': f"{price * 10:.0f}"
-            })
+        
+        # Créer et loguer une table HTML des prédictions
+        if sample_predictions:
+            html_table = pd.DataFrame(sample_predictions).to_html(index=False)
+            html_file = PROJECT_ROOT / "predictions_sample.html"
+            with open(html_file, 'w', encoding='utf-8') as f:
+                f.write(f"<h3>Prédictions d'échantillon - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</h3>")
+                f.write(html_table)
+            mlflow.log_artifact(str(html_file), "predictions")
+        
+        logger.info(f"Batch termine: {success_count} succes, {error_count} erreurs")
+        logger.info(f"Resultats sauvegardes dans: {results_file}")
+        logger.info(f"MLflow Run: {run.info.run_id}")
+        
+        # Afficher l'URL MLflow
+        mlflow_ui_url = f"{MLFLOW_TRACKING_URI}/#/experiments/{mlflow.get_experiment_by_name(mlflow_experiment_name).experiment_id}/runs/{run.info.run_id}"
+        logger.info(f"Voir les resultats dans MLflow UI: {mlflow_ui_url}")
     
-    logger.info(f"Batch termine: {success_count} succes, {error_count} erreurs")
-    
-    return pd.DataFrame(results)
+    return results_df
 
 
 if __name__ == "__main__":
-    # Remplacer tous les emojis par du texte simple
     logger.info("=" * 50)
-    logger.info("Demarrage du systeme de prediction")
+    logger.info("Demarrage du systeme de prediction avec MLflow")
     logger.info(f"Environment: {'Docker' if os.path.exists('/app') else 'Local'}")
+    logger.info(f"MLflow Tracking URI: {MLFLOW_TRACKING_URI}")
     logger.info(f"Dossier projet: {PROJECT_ROOT}")
     logger.info(f"Dossier modeles: {MODELS_DIR}")
     logger.info("=" * 50)
@@ -193,17 +268,26 @@ if __name__ == "__main__":
         # Test avec quelques voitures
         test_configs = [
             {'name': 'Ford Fiesta', 'manufacturer': 'FORD', 'age': 5, 
-             'kilometerage': 500.0, 'engine': 'Petrol', 'transmission': 'Automatic'},
+             'kilometerage': 50000.0, 'engine': 'Petrol', 'transmission': 'Automatic'},
             {'name': 'Vauxhall Corsa', 'manufacturer': 'VAUXHALL', 'age': 3, 
              'kilometerage': 30000.0, 'engine': 'Petrol', 'transmission': 'Manual'},
             {'name': 'Bmw 3 Series', 'manufacturer': 'BMW', 'age': 2, 
              'kilometerage': 20000.0, 'engine': 'Diesel', 'transmission': 'Automatic'},
+            {'name': 'Audi A4', 'manufacturer': 'AUDI', 'age': 4, 
+             'kilometerage': 40000.0, 'engine': 'Diesel', 'transmission': 'Automatic'},
+            {'name': 'Mercedes C Class', 'manufacturer': 'MERCEDES', 'age': 1, 
+             'kilometerage': 10000.0, 'engine': 'Petrol', 'transmission': 'Automatic'},
         ]
         
         print("\nResultats des predictions:\n")
-        results = predict_multiple(test_configs, model_data)
+        results = predict_multiple(test_configs, model_data, mlflow_experiment_name="CarPricePredictions")
         print(results.to_string(index=False))
         print("\n" + "=" * 50 + "\n")
+        
+        # Afficher les liens MLflow
+        print("📊 MLflow Tracking:")
+        print(f"   Interface: {MLFLOW_TRACKING_URI}")
+        print("   Pour demarrer l'interface MLflow: mlflow ui --host 0.0.0.0 --port 5000")
         
     except FileNotFoundError as e:
         logger.error(str(e))

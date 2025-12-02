@@ -31,3 +31,24 @@
 2025-12-02 13:54:11,645 - INFO - {"timestamp": "2025-12-02T13:54:11.645370", "input": {"name": "Vauxhall Corsa", "manufacturer": "VAUXHALL", "age": 3, "kilometerage": 30000.0, "engine": "Petrol", "transmission": "Manual"}, "predicted_price_EUR": 1424.59, "predicted_price_MAD": 14245.94, "prediction_time_ms": 3.5, "status": "success"}
 2025-12-02 13:54:11,649 - INFO - {"timestamp": "2025-12-02T13:54:11.649289", "input": {"name": "Bmw 3 Series", "manufacturer": "BMW", "age": 2, "kilometerage": 20000.0, "engine": "Diesel", "transmission": "Automatic"}, "predicted_price_EUR": 3712.47, "predicted_price_MAD": 37124.72, "prediction_time_ms": 3.92, "status": "success"}
 2025-12-02 13:54:11,649 - INFO - Batch termine: 3 succes, 0 erreurs
+2025-12-02 14:04:47,327 - INFO - ==================================================
+2025-12-02 14:04:47,328 - INFO - Demarrage du systeme de prediction avec MLflow
+2025-12-02 14:04:47,328 - INFO - Environment: Local
+2025-12-02 14:04:47,328 - INFO - MLflow Tracking URI: http://127.0.0.1:5000
+2025-12-02 14:04:47,329 - INFO - Dossier projet: C:\Users\Ayoub Gorry\Desktop\mlops\MLOps-Pipeline\backend
+2025-12-02 14:04:47,330 - INFO - Dossier modeles: C:\Users\Ayoub Gorry\Desktop\mlops\MLOps-Pipeline\backend\models
+2025-12-02 14:04:47,330 - INFO - ==================================================
+2025-12-02 14:04:48,325 - INFO - Modèle chargé depuis: regressor_fast_model_20251202_134000.pkl
+2025-12-02 14:04:48,326 - INFO - Version: fast_model
+2025-12-02 14:04:48,326 - INFO - Timestamp: 2025-12-02T13:40:10.683817
+2025-12-02 14:04:48,326 - INFO - Debut predictions batch: 5 voitures
+2025-12-02 14:04:48,914 - INFO - MLflow Run ID: 2f3745a95ee647bdb956407a81c5f1a3
+2025-12-02 14:04:48,980 - INFO - {"timestamp": "2025-12-02T14:04:48.980255", "input": {"name": "Ford Fiesta", "manufacturer": "FORD", "age": 5, "kilometerage": 50000.0, "engine": "Petrol", "transmission": "Automatic"}, "predicted_price_EUR": 1632.99, "predicted_price_MAD": 16329.92, "prediction_time_ms": 9.0, "status": "success"}
+2025-12-02 14:04:48,984 - INFO - {"timestamp": "2025-12-02T14:04:48.984163", "input": {"name": "Vauxhall Corsa", "manufacturer": "VAUXHALL", "age": 3, "kilometerage": 30000.0, "engine": "Petrol", "transmission": "Manual"}, "predicted_price_EUR": 1424.59, "predicted_price_MAD": 14245.94, "prediction_time_ms": 3.91, "status": "success"}
+2025-12-02 14:04:48,990 - INFO - {"timestamp": "2025-12-02T14:04:48.990602", "input": {"name": "Bmw 3 Series", "manufacturer": "BMW", "age": 2, "kilometerage": 20000.0, "engine": "Diesel", "transmission": "Automatic"}, "predicted_price_EUR": 3712.47, "predicted_price_MAD": 37124.72, "prediction_time_ms": 4.93, "status": "success"}
+2025-12-02 14:04:48,994 - INFO - {"timestamp": "2025-12-02T14:04:48.994506", "input": {"name": "Audi A4", "manufacturer": "AUDI", "age": 4, "kilometerage": 40000.0, "engine": "Diesel", "transmission": "Automatic"}, "predicted_price_EUR": 2693.58, "predicted_price_MAD": 26935.84, "prediction_time_ms": 3.9, "status": "success"}
+2025-12-02 14:04:48,998 - INFO - {"timestamp": "2025-12-02T14:04:48.998996", "input": {"name": "Mercedes C Class", "manufacturer": "MERCEDES", "age": 1, "kilometerage": 10000.0, "engine": "Petrol", "transmission": "Automatic"}, "predicted_price_EUR": 4554.22, "predicted_price_MAD": 45542.17, "prediction_time_ms": 4.49, "status": "success"}
+2025-12-02 14:04:49,782 - INFO - Batch termine: 5 succes, 0 erreurs
+2025-12-02 14:04:49,782 - INFO - Resultats sauvegardes dans: C:\Users\Ayoub Gorry\Desktop\mlops\MLOps-Pipeline\backend\predictions_20251202_140449.csv
+2025-12-02 14:04:49,784 - INFO - MLflow Run: 2f3745a95ee647bdb956407a81c5f1a3
+2025-12-02 14:04:49,808 - INFO - Voir les resultats dans MLflow UI: http://127.0.0.1:5000/#/experiments/259772317423481944/runs/2f3745a95ee647bdb956407a81c5f1a3
