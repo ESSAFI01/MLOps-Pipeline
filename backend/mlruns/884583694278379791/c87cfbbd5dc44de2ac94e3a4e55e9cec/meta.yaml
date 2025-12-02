@@ -1,0 +1,14 @@
+artifact_uri: file:///C:/Users/Ayoub%20Gorry/Desktop/mlops/MLOps-Pipeline/backend/mlruns/884583694278379791/c87cfbbd5dc44de2ac94e3a4e55e9cec/artifacts
+end_time: 1764630852690
+entry_point_name: ''
+experiment_id: '884583694278379791'
+lifecycle_stage: active
+run_id: c87cfbbd5dc44de2ac94e3a4e55e9cec
+run_name: baseline_20251202_001412
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1764630852398
+status: 4
+tags: []
+user_id: Ayoub Gorry

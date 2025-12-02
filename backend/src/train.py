@@ -73,7 +73,7 @@ mlflow.set_tracking_uri("file:./mlruns")
 
 def train_model(
     model_version='baseline',
-    cleaned_csv_path=r'Mlpro\dataSet\cleaned_cardata3.csv', 
+    cleaned_csv_path=r'C:\Users\Ayoub Gorry\Desktop\mlops\MLOps-Pipeline\Mlpro\dataSet\cleaned_cardata3.csv', 
     model_output_path=None  # Sera généré automatiquement si None
 ):
     """

@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import pickle
 
-def load_model(model_path=r'Mlpro\models\regressorfinal.pkl'):
+def load_model(model_path=r'C:\Users\Ayoub Gorry\Desktop\mlops\MLOps-Pipeline\Mlpro\models\regressorfinal.pkl'):
     """
     Charge le modèle, scaler et encoders
     """
