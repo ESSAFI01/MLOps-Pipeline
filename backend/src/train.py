@@ -22,8 +22,8 @@ if os.path.exists('/app'):  # Dans Docker
 else:  # En local
     PROJECT_ROOT = Path(__file__).parent.parent
 
-DATA_DIR = PROJECT_ROOT / "Mlpro" / "dataSet"
-MODELS_DIR = PROJECT_ROOT / "Mlpro" / "models"
+DATA_DIR = PROJECT_ROOT / "dataSet"
+MODELS_DIR = PROJECT_ROOT / "models"
 MLRUNS_DIR = PROJECT_ROOT / "mlruns"
 
 # Créer les dossiers s'ils n'existent pas
@@ -84,8 +84,9 @@ def get_model_configs():
 
 
 # Configuration MLflow
+mlflow.set_tracking_uri(f"file:{MLRUNS_DIR.as_posix()}")
 mlflow.set_experiment("car_price_prediction")
-mlflow.set_tracking_uri(f"file:{MLRUNS_DIR.as_posix()}")  # Utilise MLRUNS_DIR
+
 
 
 def train_model(
