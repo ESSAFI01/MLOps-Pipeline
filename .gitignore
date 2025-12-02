@@ -5,3 +5,4 @@ backend/models/
 backend/PredictionsCSV/
 backend/PredictionsHtml/
 backend/PredictionsLog/
+manifacts/
