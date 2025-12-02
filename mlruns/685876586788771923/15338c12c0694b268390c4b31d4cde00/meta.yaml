@@ -1,8 +1,9 @@
 artifact_uri: file:///C:/Users/essaf/Desktop/MLopsTP/mlruns/685876586788771923/15338c12c0694b268390c4b31d4cde00/artifacts
+deleted_time: 1764676275438
 end_time: 1764630039054
 entry_point_name: ''
 experiment_id: '685876586788771923'
-lifecycle_stage: active
+lifecycle_stage: deleted
 run_id: 15338c12c0694b268390c4b31d4cde00
 run_name: baseline_20251201_235956
 source_name: ''

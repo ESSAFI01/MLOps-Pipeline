@@ -91,8 +91,8 @@ mlflow.set_experiment("car_price_prediction")
 
 def train_model(
     model_version='baseline',
-    cleaned_csv_path='backend\dataSet\cleaned_cardata3.csv',  #
-    model_output_path='backend\models'
+    cleaned_csv_path=None,  #
+    model_output_path=None
 ):
     """
     Entraîne le modèle XGBoost et sauvegarde le pipeline complet
