@@ -1,0 +1,33 @@
+2025-12-02 13:50:01,871 - INFO - ==================================================
+2025-12-02 13:50:01,928 - INFO - ==================================================
+2025-12-02 13:50:03,212 - INFO -    Version: fast_model
+2025-12-02 13:50:03,212 - INFO -    Timestamp: 2025-12-02T13:40:10.683817
+2025-12-02 13:50:03,250 - ERROR - Erreur inattendue: Object of type float32 is not JSON serializable
+2025-12-02 13:53:12,561 - INFO - ==================================================
+2025-12-02 13:53:12,561 - INFO - Demarrage du systeme de prediction
+2025-12-02 13:53:12,563 - INFO - Environment: Local
+2025-12-02 13:53:12,567 - INFO - Dossier projet: C:\Users\Ayoub Gorry\Desktop\mlops\MLOps-Pipeline\backend
+2025-12-02 13:53:12,567 - INFO - Dossier modeles: C:\Users\Ayoub Gorry\Desktop\mlops\MLOps-Pipeline\backend\models
+2025-12-02 13:53:12,568 - INFO - ==================================================
+2025-12-02 13:53:13,802 - INFO - Modèle chargé depuis: regressor_fast_model_20251202_134000.pkl
+2025-12-02 13:53:13,803 - INFO - Version: fast_model
+2025-12-02 13:53:13,803 - INFO - Timestamp: 2025-12-02T13:40:10.683817
+2025-12-02 13:53:13,803 - INFO - Debut predictions batch: 3 voitures
+2025-12-02 13:53:13,809 - INFO - {"timestamp": "2025-12-02T13:53:13.809435", "input": {"name": "Ford Fiesta", "manufacturer": "FORD", "age": 5, "kilometerage": 50000.0, "engine": "Petrol", "transmission": "Automatic"}, "predicted_price_EUR": 1632.99, "predicted_price_MAD": 16329.92, "prediction_time_ms": 4.93, "status": "success"}
+2025-12-02 13:53:13,813 - INFO - {"timestamp": "2025-12-02T13:53:13.813383", "input": {"name": "Vauxhall Corsa", "manufacturer": "VAUXHALL", "age": 3, "kilometerage": 30000.0, "engine": "Petrol", "transmission": "Manual"}, "predicted_price_EUR": 1424.59, "predicted_price_MAD": 14245.94, "prediction_time_ms": 2.94, "status": "success"}
+2025-12-02 13:53:13,817 - INFO - {"timestamp": "2025-12-02T13:53:13.817290", "input": {"name": "Bmw 3 Series", "manufacturer": "BMW", "age": 2, "kilometerage": 20000.0, "engine": "Diesel", "transmission": "Automatic"}, "predicted_price_EUR": 3712.47, "predicted_price_MAD": 37124.72, "prediction_time_ms": 2.93, "status": "success"}
+2025-12-02 13:53:13,817 - INFO - Batch termine: 3 succes, 0 erreurs
+2025-12-02 13:54:10,405 - INFO - ==================================================
+2025-12-02 13:54:10,405 - INFO - Demarrage du systeme de prediction
+2025-12-02 13:54:10,406 - INFO - Environment: Local
+2025-12-02 13:54:10,406 - INFO - Dossier projet: C:\Users\Ayoub Gorry\Desktop\mlops\MLOps-Pipeline\backend
+2025-12-02 13:54:10,406 - INFO - Dossier modeles: C:\Users\Ayoub Gorry\Desktop\mlops\MLOps-Pipeline\backend\models
+2025-12-02 13:54:10,407 - INFO - ==================================================
+2025-12-02 13:54:11,635 - INFO - Modèle chargé depuis: regressor_fast_model_20251202_134000.pkl
+2025-12-02 13:54:11,635 - INFO - Version: fast_model
+2025-12-02 13:54:11,636 - INFO - Timestamp: 2025-12-02T13:40:10.683817
+2025-12-02 13:54:11,636 - INFO - Debut predictions batch: 3 voitures
+2025-12-02 13:54:11,641 - INFO - {"timestamp": "2025-12-02T13:54:11.641873", "input": {"name": "Ford Fiesta", "manufacturer": "FORD", "age": 5, "kilometerage": 500.0, "engine": "Petrol", "transmission": "Automatic"}, "predicted_price_EUR": 2602.78, "predicted_price_MAD": 26027.81, "prediction_time_ms": 4.92, "status": "success"}
+2025-12-02 13:54:11,645 - INFO - {"timestamp": "2025-12-02T13:54:11.645370", "input": {"name": "Vauxhall Corsa", "manufacturer": "VAUXHALL", "age": 3, "kilometerage": 30000.0, "engine": "Petrol", "transmission": "Manual"}, "predicted_price_EUR": 1424.59, "predicted_price_MAD": 14245.94, "prediction_time_ms": 3.5, "status": "success"}
+2025-12-02 13:54:11,649 - INFO - {"timestamp": "2025-12-02T13:54:11.649289", "input": {"name": "Bmw 3 Series", "manufacturer": "BMW", "age": 2, "kilometerage": 20000.0, "engine": "Diesel", "transmission": "Automatic"}, "predicted_price_EUR": 3712.47, "predicted_price_MAD": 37124.72, "prediction_time_ms": 3.92, "status": "success"}
+2025-12-02 13:54:11,649 - INFO - Batch termine: 3 succes, 0 erreurs
