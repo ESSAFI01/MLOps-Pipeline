@@ -7,11 +7,23 @@ import logging
 from datetime import datetime
 import json
 
+<<<<<<< HEAD
+def load_model(model_path=r'C:\Users\Ayoub Gorry\Desktop\mlops\MLOps-Pipeline\Mlpro\models\regressorfinal.pkl'):
+    """
+    Charge le modèle, scaler et encoders
+    """
+    with open(model_path, 'rb') as file:
+        model_data = pickle.load(file)
+    
+    print("✅ Modèle chargé avec succès")
+    return model_data
+=======
 # Détection automatique de l'environnement (comme train.py)
 if os.path.exists('/app'):  # Dans Docker
     PROJECT_ROOT = Path('/app')
 else:  # En local
     PROJECT_ROOT = Path(__file__).parent.parent
+>>>>>>> 74abcf42d8a695cef55fa89bb4918e5372a6ce36
 
 MODELS_DIR = PROJECT_ROOT / "Mlpro" / "models"
 

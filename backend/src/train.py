@@ -91,7 +91,7 @@ mlflow.set_experiment("car_price_prediction")
 
 def train_model(
     model_version='baseline',
-    cleaned_csv_path=None,  # ← Changé de string hardcodé à None
+    cleaned_csv_path=None,  #
     model_output_path=None
 ):
     """
