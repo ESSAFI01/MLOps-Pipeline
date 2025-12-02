@@ -2,3 +2,6 @@ mlruns/
 backend/mlruns/
 */mlruns/
 backend/models/
+backend/PredictionsCSV/
+backend/PredictionsHtml/
+backend/PredictionsLog/
