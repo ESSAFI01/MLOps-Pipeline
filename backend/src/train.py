@@ -22,9 +22,10 @@ if os.path.exists('/app'):  # Dans Docker
 else:  # En local
     PROJECT_ROOT = Path(__file__).parent.parent
 
+
 DATA_DIR = PROJECT_ROOT / "dataSet"
 MODELS_DIR = PROJECT_ROOT / "models"
-MLRUNS_DIR = PROJECT_ROOT / "mlruns"
+MLRUNS_DIR = PROJECT_ROOT.parent / "mlruns"
 
 # Créer les dossiers s'ils n'existent pas
 MODELS_DIR.mkdir(parents=True, exist_ok=True)
