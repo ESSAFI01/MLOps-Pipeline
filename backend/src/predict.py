@@ -23,7 +23,7 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler(PROJECT_ROOT / 'predictions.log', encoding='utf-8'),
+        logging.FileHandler(PROJECT_ROOT / 'predictionsLog/predictions.log', encoding='utf-8'),
         logging.StreamHandler()
     ]
 )
@@ -213,7 +213,7 @@ def predict_multiple(test_configs, model_data, mlflow_experiment_name="predictio
         
         # Sauvegarder les résultats dans un fichier et le loguer dans MLflow
         results_df = pd.DataFrame(results)
-        results_file = PROJECT_ROOT / f"predictions_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+        results_file = PROJECT_ROOT / f"predictionsCSV/predictions_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
         results_df.to_csv(results_file, index=False)
         
         # Loguer le fichier de résultats
@@ -236,7 +236,7 @@ def predict_multiple(test_configs, model_data, mlflow_experiment_name="predictio
         # Créer et loguer une table HTML des prédictions
         if sample_predictions:
             html_table = pd.DataFrame(sample_predictions).to_html(index=False)
-            html_file = PROJECT_ROOT / "predictions_sample.html"
+            html_file = PROJECT_ROOT / "predictionsHtml/predictions_sample.html"
             with open(html_file, 'w', encoding='utf-8') as f:
                 f.write(f"<h3>Prédictions d'échantillon - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</h3>")
                 f.write(html_table)
@@ -268,15 +268,15 @@ if __name__ == "__main__":
         # Test avec quelques voitures
         test_configs = [
             {'name': 'Ford Fiesta', 'manufacturer': 'FORD', 'age': 5, 
-             'kilometerage': 50000.0, 'engine': 'Petrol', 'transmission': 'Automatic'},
+             'kilometerage': 5000.0, 'engine': 'Petrol', 'transmission': 'Automatic'},
             {'name': 'Vauxhall Corsa', 'manufacturer': 'VAUXHALL', 'age': 3, 
-             'kilometerage': 30000.0, 'engine': 'Petrol', 'transmission': 'Manual'},
+             'kilometerage': 30.0, 'engine': 'Petrol', 'transmission': 'Manual'},
             {'name': 'Bmw 3 Series', 'manufacturer': 'BMW', 'age': 2, 
-             'kilometerage': 20000.0, 'engine': 'Diesel', 'transmission': 'Automatic'},
+             'kilometerage': 200.0, 'engine': 'Diesel', 'transmission': 'Automatic'},
             {'name': 'Audi A4', 'manufacturer': 'AUDI', 'age': 4, 
-             'kilometerage': 40000.0, 'engine': 'Diesel', 'transmission': 'Automatic'},
+             'kilometerage': 400000.0, 'engine': 'Diesel', 'transmission': 'Automatic'},
             {'name': 'Mercedes C Class', 'manufacturer': 'MERCEDES', 'age': 1, 
-             'kilometerage': 10000.0, 'engine': 'Petrol', 'transmission': 'Automatic'},
+             'kilometerage': 10330.0, 'engine': 'Petrol', 'transmission': 'Manual'},
         ]
         
         print("\nResultats des predictions:\n")

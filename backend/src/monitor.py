@@ -28,14 +28,14 @@ def monitor_predictions():
     print("=" * 80)
     
     for idx, run in runs.iterrows():
-        print(f"\n🏃 Run: {run['run_id']}")
-        print(f"   📅 Date: {run['start_time']}")
-        print(f"   📊 Taille batch: {run['params.batch_size'] if 'params.batch_size' in run else 'N/A'}")
-        print(f"   ✅ Succès: {run['metrics.success_count'] if 'metrics.success_count' in run else 'N/A'}")
-        print(f"   ❌ Erreurs: {run['metrics.error_count'] if 'metrics.error_count' in run else 'N/A'}")
-        print(f"   📈 Taux succès: {float(run['metrics.success_rate']) * 100:.1f}%" if 'metrics.success_rate' in run else '   📈 Taux succès: N/A')
-        print(f"   💰 Prix moyen: {run['metrics.avg_predicted_price']:.0f} €" if 'metrics.avg_predicted_price' in run else '   💰 Prix moyen: N/A')
-        print(f"   🔗 MLflow UI: http://localhost:5000/#/experiments/{experiment.experiment_id}/runs/{run['run_id']}")
+        print(f"\n Run: {run['run_id']}")
+        print(f"Date: {run['start_time']}")
+        print(f"Taille batch: {run['params.batch_size'] if 'params.batch_size' in run else 'N/A'}")
+        print(f"Succès: {run['metrics.success_count'] if 'metrics.success_count' in run else 'N/A'}")
+        print(f"Erreurs: {run['metrics.error_count'] if 'metrics.error_count' in run else 'N/A'}")
+        print(f"Taux succès: {float(run['metrics.success_rate']) * 100:.1f}%" if 'metrics.success_rate' in run else '   📈 Taux succès: N/A')
+        print(f"Prix moyen: {run['metrics.avg_predicted_price']:.0f} €" if 'metrics.avg_predicted_price' in run else '   💰 Prix moyen: N/A')
+        print(f"MLflow UI: http://localhost:5000/#/experiments/{experiment.experiment_id}/runs/{run['run_id']}")
     
     print("\n" + "=" * 80)
     
