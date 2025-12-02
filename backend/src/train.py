@@ -15,22 +15,17 @@ from pathlib import Path
 warnings.filterwarnings('ignore')
 
 from data_utils import prepare_features_for_training, scale_features
+from mlflow_config import MLFLOW_CONFIG, setup_mlflow, get_project_paths
 
-# Détection automatique de l'environnement
-if os.path.exists('/app'):  # Dans Docker
-    PROJECT_ROOT = Path('/app')
-else:  # En local
-    PROJECT_ROOT = Path(__file__).parent.parent
+# Utiliser les chemins depuis la config centralisée
+PATHS = get_project_paths()
+PROJECT_ROOT = PATHS["project_root"]
+DATA_DIR = PATHS["data"]
+MODELS_DIR = PATHS["models"]
+MLRUNS_DIR = PATHS["mlruns"]
 
-
-DATA_DIR = PROJECT_ROOT / "dataSet"
-MODELS_DIR = PROJECT_ROOT / "models"
-MLRUNS_DIR = PROJECT_ROOT.parent / "mlruns"
-
-# Créer les dossiers s'ils n'existent pas
-MODELS_DIR.mkdir(parents=True, exist_ok=True)
-DATA_DIR.mkdir(parents=True, exist_ok=True)
-MLRUNS_DIR.mkdir(parents=True, exist_ok=True)
+# Configuration MLflow UNIFIÉE
+mlflow = setup_mlflow(mode='train')
 
 
 def get_model_configs():
@@ -84,15 +79,9 @@ def get_model_configs():
     return configs
 
 
-# Configuration MLflow
-mlflow.set_tracking_uri(f"file:{MLRUNS_DIR.as_posix()}")
-mlflow.set_experiment("car_price_prediction")
-
-
-
 def train_model(
     model_version='baseline',
-    cleaned_csv_path=None,  #
+    cleaned_csv_path=None,
     model_output_path=None
 ):
     """
@@ -102,11 +91,14 @@ def train_model(
         model_version (str): Version du modèle
         cleaned_csv_path (str|Path): Chemin vers les données (auto si None)
         model_output_path (str|Path): Chemin de sortie (auto si None)
+    
+    Returns:
+        tuple: (model_data, model_output_path)
     """
     
     # Utiliser les chemins dynamiques
     if cleaned_csv_path is None:
-        cleaned_csv_path = DATA_DIR / "cleaned_cardata3.csv"  # ← Utilise DATA_DIR
+        cleaned_csv_path = DATA_DIR / "cleaned_cardata3.csv"
     else:
         cleaned_csv_path = Path(cleaned_csv_path)
     
@@ -150,15 +142,17 @@ def train_model(
         print(f"📂 Données: {DATA_DIR}")
         print(f"💾 Modèles: {MODELS_DIR}")
         print(f"📊 MLflow: {MLRUNS_DIR}")
+        print(f"🏷️  Expérience: '{MLFLOW_CONFIG['EXPERIMENT_NAME']}'")
         print(f"{'='*70}\n")
+        
+        # Logger les tags par défaut depuis la config
+        default_tags = MLFLOW_CONFIG["DEFAULT_TAGS"]
+        for tag_name, tag_value in default_tags.items():
+            mlflow.set_tag(tag_name, tag_value)
         
         # Logger la version du modèle
         mlflow.log_param("model_version", model_version)
         mlflow.set_tag("model_version", model_version)
-        mlflow.set_tag("model_type", "XGBoost")
-        mlflow.set_tag("framework", "scikit-learn")
-        mlflow.set_tag("task", "regression")
-        mlflow.set_tag("dataset", "car_prices")
         
         # 1. Charger et préparer données
         print(f"📂 Chargement des données: {cleaned_csv_path.name}")
@@ -194,6 +188,7 @@ def train_model(
             mlflow.log_param(f"grid_{param_name}", param_value[0])
             print(f"   {param_name}: {param_value[0]}")
         
+        # 4. Création et configuration du modèle
         model = GridSearchCV(
             estimator=XGBRegressor(random_state=123, tree_method='hist'),
             param_grid=grid,
@@ -255,23 +250,26 @@ def train_model(
             'encoders': encoders,
             'version': model_version,
             'timestamp': datetime.now().isoformat(),
-            'training_data_path': str(cleaned_csv_path)
+            'training_data_path': str(cleaned_csv_path),
+            'mlflow_experiment': MLFLOW_CONFIG["EXPERIMENT_NAME"]
         }
         
         with open(model_output_path, 'wb') as file:
             pickle.dump(model_data, file)
         
+        # 9. Enregistrer le modèle dans MLflow
         mlflow.xgboost.log_model(
             model.best_estimator_,
             artifact_path="xgboost_model",
-            registered_model_name="car_price_model"
+            registered_model_name=MLFLOW_CONFIG["REGISTERED_MODEL_NAME"]
         )
 
         mlflow.log_artifact(str(model_output_path), "model_pickle")
         
         print(f"\n✅ Modèle sauvegardé: {model_output_path}")
         print(f"📊 MLflow Run ID: {mlflow.active_run().info.run_id}")
-        print(f"🔗 Voir les résultats: mlflow ui")
+        print(f"🏷️  Expérience: '{MLFLOW_CONFIG['EXPERIMENT_NAME']}'")
+        print(f"🔗 Pour voir les résultats: mlflow ui --port 5000")
         print(f"\n{'='*70}\n")
         
         return model_data, model_output_path
@@ -292,6 +290,7 @@ if __name__ == "__main__":
     print(f"📁 Dossier projet: {PROJECT_ROOT}")
     print(f"📂 Données: {DATA_DIR}")
     print(f"💾 Modèles: {MODELS_DIR}")
+    print(f"🏷️  Expérience MLflow: '{MLFLOW_CONFIG['EXPERIMENT_NAME']}'")
     print(f"\nVersion demandée: {version}")
     print(f"Versions disponibles: {', '.join(get_model_configs().keys())}")
     
@@ -307,12 +306,13 @@ if __name__ == "__main__":
         print(f"✅ SUCCÈS - Modèle {version} entraîné!")
         print(f"{'='*70}")
         print(f"📦 Fichier: {model_path}")
+        print(f"🏷️  Expérience: '{MLFLOW_CONFIG['EXPERIMENT_NAME']}'")
         print(f"💡 Pour tester: python predict.py")
-        print(f"📊 Pour voir MLflow: mlflow ui")
+        print(f"📊 Pour voir MLflow: mlflow ui --host 0.0.0.0 --port 5000")
         print(f"{'='*70}\n")
         
     except Exception as e:
         print(f"\n❌ ERREUR: {e}\n")
         import traceback
         traceback.print_exc()
-        raise
+        sys.exit(1)

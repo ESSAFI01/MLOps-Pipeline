@@ -8,22 +8,22 @@ from datetime import datetime
 import json
 import mlflow
 import mlflow.sklearn
+from mlflow_config import MLFLOW_CONFIG, setup_mlflow, get_project_paths
 
-# Détection automatique de l'environnement (comme train.py)
-if os.path.exists('/app'):  # Dans Docker
-    PROJECT_ROOT = Path('/app')
-else:  # En local
-    PROJECT_ROOT = Path(__file__).parent.parent
-
-MODELS_DIR = PROJECT_ROOT / "models"
-MLFLOW_TRACKING_URI = "http://127.0.0.1:5000"  # URI de votre serveur MLflow
+# Utiliser les chemins depuis la config centralisée
+PATHS = get_project_paths()
+PROJECT_ROOT = PATHS["project_root"]
+MODELS_DIR = PATHS["models"]
+PREDICTIONS_LOG_DIR = PATHS["predictions_log"]
+PREDICTIONS_CSV_DIR = PATHS["predictions_csv"]
+PREDICTIONS_HTML_DIR = PATHS["predictions_html"]
 
 # Configuration du logging avec encodage UTF-8
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler(PROJECT_ROOT / 'predictionsLog/predictions.log', encoding='utf-8'),
+        logging.FileHandler(PREDICTIONS_LOG_DIR / 'predictions.log', encoding='utf-8'),
         logging.StreamHandler()
     ]
 )
@@ -85,6 +85,8 @@ def load_model(model_path=None):
             logger.info(f"Version: {model_data['version']}")
         if 'timestamp' in model_data:
             logger.info(f"Timestamp: {model_data['timestamp']}")
+        if 'mlflow_experiment' in model_data:
+            logger.info(f"Expérience MLflow: {model_data['mlflow_experiment']}")
         
         return model_data
     except Exception as e:
@@ -144,12 +146,23 @@ def predict_price(car_config, model_data, log_prediction=True):
     return price, None
 
 
-def predict_multiple(test_configs, model_data, mlflow_experiment_name="predictions"):
+def predict_multiple(test_configs, model_data, mlflow_experiment_name=None):
     """Prédictions multiples avec tracking MLflow"""
-    logger.info(f"Debut predictions batch: {len(test_configs)} voitures")
+    logger.info(f"Début prédictions batch: {len(test_configs)} voitures")
     
-    # Configuration MLflow
-    mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
+    # Configuration MLflow UNIFIÉE
+    mlflow = setup_mlflow(mode='predict')
+    
+    # Utiliser le nom d'expérience centralisé si non spécifié
+    if mlflow_experiment_name is None:
+        mlflow_experiment_name = MLFLOW_CONFIG["EXPERIMENT_NAME"]
+    else:
+        mlflow_experiment_name = mlflow_experiment_name.strip()
+    
+    # S'assurer qu'on utilise la bonne expérience
+    if mlflow_experiment_name != MLFLOW_CONFIG["EXPERIMENT_NAME"]:
+        logger.warning(f"Expérience spécifiée '{mlflow_experiment_name}' différente de l'expérience centralisée '{MLFLOW_CONFIG['EXPERIMENT_NAME']}'")
+    
     mlflow.set_experiment(mlflow_experiment_name)
     
     results = []
@@ -160,15 +173,25 @@ def predict_multiple(test_configs, model_data, mlflow_experiment_name="predictio
     # Démarrer une run MLflow
     with mlflow.start_run(run_name=f"batch_predict_{datetime.now().strftime('%Y%m%d_%H%M%S')}") as run:
         logger.info(f"MLflow Run ID: {run.info.run_id}")
+        logger.info(f"Expérience MLflow: '{mlflow_experiment_name}'")
         
-        # Loguer les métadonnées du modèle
+        # Logger les tags par défaut
+        default_tags = MLFLOW_CONFIG["DEFAULT_TAGS"]
+        for tag_name, tag_value in default_tags.items():
+            mlflow.set_tag(tag_name, tag_value)
+        
+        # Logger les métadonnées du modèle
         if 'version' in model_data:
             mlflow.log_param("model_version", model_data['version'])
+            mlflow.set_tag("model_version", model_data['version'])
         if 'timestamp' in model_data:
             mlflow.log_param("model_timestamp", model_data['timestamp'])
+        if 'mlflow_experiment' in model_data:
+            mlflow.log_param("training_experiment", model_data['mlflow_experiment'])
         
         mlflow.log_param("batch_size", len(test_configs))
         mlflow.log_param("run_id", run.info.run_id)
+        mlflow.log_param("current_experiment", mlflow_experiment_name)
         
         for i, config in enumerate(test_configs):
             price, error = predict_price(config, model_data, log_prediction=True)
@@ -212,9 +235,10 @@ def predict_multiple(test_configs, model_data, mlflow_experiment_name="predictio
             mlflow.log_metric("std_predicted_price", np.std(prices))
         
         # Sauvegarder les résultats dans un fichier et le loguer dans MLflow
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        results_file = PREDICTIONS_CSV_DIR / f"predictions_{timestamp}.csv"
         results_df = pd.DataFrame(results)
-        results_file = PROJECT_ROOT / f"predictionsCSV/predictions_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
-        results_df.to_csv(results_file, index=False)
+        results_df.to_csv(results_file, index=False, encoding='utf-8')
         
         # Loguer le fichier de résultats
         mlflow.log_artifact(str(results_file), "predictions")
@@ -236,31 +260,39 @@ def predict_multiple(test_configs, model_data, mlflow_experiment_name="predictio
         # Créer et loguer une table HTML des prédictions
         if sample_predictions:
             html_table = pd.DataFrame(sample_predictions).to_html(index=False)
-            html_file = PROJECT_ROOT / "predictionsHtml/predictions_sample.html"
+            html_file = PREDICTIONS_HTML_DIR / f"predictions_sample_{timestamp}.html"
             with open(html_file, 'w', encoding='utf-8') as f:
                 f.write(f"<h3>Prédictions d'échantillon - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</h3>")
+                f.write(f"<p>Expérience: <strong>{mlflow_experiment_name}</strong></p>")
+                f.write(f"<p>Modèle: <strong>{model_data.get('version', 'N/A')}</strong></p>")
                 f.write(html_table)
             mlflow.log_artifact(str(html_file), "predictions")
         
-        logger.info(f"Batch termine: {success_count} succes, {error_count} erreurs")
-        logger.info(f"Resultats sauvegardes dans: {results_file}")
-        logger.info(f"MLflow Run: {run.info.run_id}")
+        logger.info(f"Batch terminé: {success_count} succès, {error_count} erreurs")
+        logger.info(f"Résultats sauvegardés dans: {results_file}")
+        logger.info(f"MLflow Run ID: {run.info.run_id}")
         
         # Afficher l'URL MLflow
-        mlflow_ui_url = f"{MLFLOW_TRACKING_URI}/#/experiments/{mlflow.get_experiment_by_name(mlflow_experiment_name).experiment_id}/runs/{run.info.run_id}"
-        logger.info(f"Voir les resultats dans MLflow UI: {mlflow_ui_url}")
+        try:
+            experiment = mlflow.get_experiment_by_name(mlflow_experiment_name)
+            if experiment:
+                mlflow_ui_url = f"{MLFLOW_CONFIG['TRACKING_URI_HTTP']}/#/experiments/{experiment.experiment_id}/runs/{run.info.run_id}"
+                logger.info(f"Voir les résultats dans MLflow UI: {mlflow_ui_url}")
+        except:
+            logger.info(f"Interface MLflow: {MLFLOW_CONFIG['TRACKING_URI_HTTP']}")
     
     return results_df
 
 
 if __name__ == "__main__":
-    logger.info("=" * 50)
-    logger.info("Demarrage du systeme de prediction avec MLflow")
-    logger.info(f"Environment: {'Docker' if os.path.exists('/app') else 'Local'}")
-    logger.info(f"MLflow Tracking URI: {MLFLOW_TRACKING_URI}")
+    logger.info("=" * 60)
+    logger.info("Démarrage du système de prédiction avec MLflow")
+    logger.info(f"Environnement: {'Docker' if os.path.exists('/app') else 'Local'}")
+    logger.info(f"MLflow Tracking URI: {MLFLOW_CONFIG['TRACKING_URI_HTTP']}")
     logger.info(f"Dossier projet: {PROJECT_ROOT}")
-    logger.info(f"Dossier modeles: {MODELS_DIR}")
-    logger.info("=" * 50)
+    logger.info(f"Dossier modèles: {MODELS_DIR}")
+    logger.info(f"Expérience MLflow: '{MLFLOW_CONFIG['EXPERIMENT_NAME']}'")
+    logger.info("=" * 60)
     
     try:
         model_data = load_model()
@@ -279,22 +311,36 @@ if __name__ == "__main__":
              'kilometerage': 10330.0, 'engine': 'Petrol', 'transmission': 'Manual'},
         ]
         
-        print("\nResultats des predictions:\n")
-        results = predict_multiple(test_configs, model_data, mlflow_experiment_name="CarPricePredictions")
+        print(f"\n🎯 Prédictions avec l'expérience: '{MLFLOW_CONFIG['EXPERIMENT_NAME']}'")
+        print(f"📊 Modèle chargé: {model_data.get('version', 'N/A')}")
+        print("=" * 60 + "\n")
+        
+        results = predict_multiple(test_configs, model_data, mlflow_experiment_name=MLFLOW_CONFIG["EXPERIMENT_NAME"])
         print(results.to_string(index=False))
-        print("\n" + "=" * 50 + "\n")
+        print("\n" + "=" * 60 + "\n")
         
         # Afficher les liens MLflow
         print("📊 MLflow Tracking:")
-        print(f"   Interface: {MLFLOW_TRACKING_URI}")
-        print("   Pour demarrer l'interface MLflow: mlflow ui --host 0.0.0.0 --port 5000")
+        print(f"   Interface: {MLFLOW_CONFIG['TRACKING_URI_HTTP']}")
+        print(f"   Expérience: '{MLFLOW_CONFIG['EXPERIMENT_NAME']}'")
+        print("\n💡 Pour démarrer l'interface MLflow:")
+        print("   mlflow ui --host 0.0.0.0 --port 5000")
+        print("\n📁 Dossiers créés:")
+        print(f"   Logs: {PREDICTIONS_LOG_DIR}")
+        print(f"   CSV: {PREDICTIONS_CSV_DIR}")
+        print(f"   HTML: {PREDICTIONS_HTML_DIR}")
+        print("=" * 60)
         
     except FileNotFoundError as e:
         logger.error(str(e))
-        print(f"\n{e}")
-        print("\nSolution: Lance d'abord l'entrainement:")
+        print(f"\n❌ {e}")
+        print("\n💡 Solution: Lancez d'abord l'entraînement:")
         print("   python train.py baseline\n")
+        print("Ou pour une version spécifique:")
+        print("   python train.py fast_model")
+        print("   python train.py accurate_model\n")
     except Exception as e:
         logger.error(f"Erreur inattendue: {e}")
         import traceback
         traceback.print_exc()
+        print(f"\n❌ Erreur: {e}")

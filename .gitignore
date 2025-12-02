@@ -1,8 +1,39 @@
-mlruns/
-backend/mlruns/
-*/mlruns/
+# MLflow runs (any depth)
+**/mlruns/**
+
+# Backend artifacts & predictions (match lowercase folders)
 backend/models/
-backend/PredictionsCSV/
-backend/PredictionsHtml/
-backend/PredictionsLog/
-manifacts/
+backend/predictionsCSV/
+backend/predictionsHtml/
+backend/predictionsLog/
+
+# Common artifact dir (fixed typo)
+artifacts/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+.env
+.venv/
+venv/
+env/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# IDE / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Logs & misc
+*.log
+logs/
+coverage.xml
+htmlcov/
+.coverage
